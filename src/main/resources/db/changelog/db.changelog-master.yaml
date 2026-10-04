@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - include:
+      file: changes/001-create-users.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/002-create-accounts.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/003-create-transactions.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/004-create-ledger-entries.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/005-ledger-immutability.sql
+      relativeToChangelogFile: true
+  - include:
+      file: changes/006-ledger-balance-guard.sql
+      relativeToChangelogFile: true

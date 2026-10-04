@@ -1,0 +1,8 @@
+target/
+build/
+project.zip
+.env
+.idea/
+.vscode/
+*.iml
+*.log

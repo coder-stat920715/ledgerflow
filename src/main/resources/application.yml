@@ -1,0 +1,227 @@
+spring:
+  application:
+    name: ledgerflow
+  profiles:
+    default: dev
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ledgerflow}
+    username: ${DB_USERNAME:ledgerflow}
+    password: ${DB_PASSWORD:ledgerflow}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: ledgerflow-pool
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: 10000
+      idle-timeout: 300000
+      max-lifetime: 1500000
+      leak-detection-threshold: 30000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        format_sql: false
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+      connect-timeout: 2s
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 2s
+
+  cache:
+    type: redis
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+  mvc:
+    problemdetails:
+      enabled: true
+
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+      roles: ROLE_ADMIN
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+logging:
+  pattern:
+    level: "%5p [%X{requestId:-}]"
+
+app:
+  security:
+    jwt:
+      # HS256 needs at least 32 bytes. No default here: dev and test profiles set one, prod must supply JWT_SECRET.
+      secret: ${JWT_SECRET}
+      issuer: ledgerflow
+      access-token-ttl: 15m
+    bcrypt-strength: 12
+  lock:
+    wait-timeout: 3s
+    lease-time: 15s
+    retry-interval: 50ms
+    key-prefix: "ledgerflow:lock:account:"
+  cache:
+    key-prefix: "ledgerflow:"
+    ttl:
+      accounts: 5m
+      account-balances: 30s
+      user-accounts: 2m
+  bootstrap:
+    admin:
+      enabled: false
+      email: ${BOOTSTRAP_ADMIN_EMAIL:}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+      full-name: System Administrator
+
+---
+# ---------------------------------------------------------------- dev
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.example.ledgerflow: DEBUG
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+  bootstrap:
+    admin:
+      enabled: true
+      email: ${BOOTSTRAP_ADMIN_EMAIL:admin@ledgerflow.local}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:ChangeMe!12345}
+
+---
+# ---------------------------------------------------------------- test
+spring:
+  config:
+    activate:
+      on-profile: test
+  data:
+    redis:
+      timeout: 1s
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.example.ledgerflow: INFO
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:test-only-secret-0123456789abcdef0123456789}
+    bcrypt-strength: 4
+  lock:
+    wait-timeout: 1s
+    lease-time: 5s
+
+---
+# ---------------------------------------------------------------- prod
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      ssl:
+        enabled: ${REDIS_SSL:false}
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+
+logging:
+  level:
+    root: INFO
+    com.example.ledgerflow: INFO
+
+app:
+  bootstrap:
+    admin:
+      enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
